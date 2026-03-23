@@ -1,0 +1,9 @@
+import { cookies } from 'next/headers';
+
+export async function getUserAgent() {
+  const cookieStore = await cookies();
+  const userAgent =
+    cookieStore.get('user-agent')?.value ||
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36';
+  return userAgent;
+}
