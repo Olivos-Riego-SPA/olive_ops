@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { LuBuilding2 } from 'react-icons/lu';
 import { useMonitorData } from '@/hooks/use-monitor-data';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { PullIndicator } from '@/components/pull-indicator';
 import { buildClientSaludList } from '@/lib/calc-client-salud';
 import type { ClientSalud, HealthStatus } from '@/types/client-salud';
 
@@ -40,6 +42,7 @@ export default function ClientHealthList() {
   const [sortBy, setSortBy] = useState<'score' | 'category'>('score');
 
   const monitor = useMonitorData();
+  const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
 
   const isLoading =
     monitor.talgilConns.isLoading ||
@@ -100,6 +103,8 @@ export default function ClientHealthList() {
 
   return (
     <div className="space-y-5">
+
+      <PullIndicator pullY={pullY} refreshing={refreshing || monitor.isRefetching} />
 
       {/* Buscador */}
       <div className="relative flex items-center">

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LuSprout } from 'react-icons/lu';
 import { useMonitorData } from '@/hooks/use-monitor-data';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { PullIndicator } from '@/components/pull-indicator';
 import { buildClientSaludList, formatHours, scoreToStatus } from '@/lib/calc-client-salud';
 import type { CampoSalud, HealthStatus } from '@/types/client-salud';
 
@@ -22,6 +24,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
   const router = useRouter();
 
   const monitor = useMonitorData();
+  const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
 
   const isLoading =
     monitor.talgilConns.isLoading  ||
@@ -84,6 +87,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
 
   return (
     <main className="min-h-screen bg-surface">
+      <PullIndicator pullY={pullY} refreshing={refreshing || monitor.isRefetching} />
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
 
         {/* Botón volver */}

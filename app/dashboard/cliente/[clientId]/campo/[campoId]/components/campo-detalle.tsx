@@ -51,13 +51,6 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
   const pct    = campo ? Math.round(campo.score * 100) : 0;
   const st     = campo ? STATUS_STYLE[campo.status] : null;
 
-  // DEBUG pozos
-  if (campo?.pozos.length) {
-    console.group(`[Pozos] ${campo.campoName}`);
-    campo.pozos.forEach(p => console.log(p));
-    console.groupEnd();
-  }
-
   return (
     <main className="min-h-screen bg-surface">
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
