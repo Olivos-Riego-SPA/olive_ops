@@ -8,8 +8,15 @@ import { toast } from 'sonner';
 import * as z from 'zod';
 import { loginAction } from '@/actions/auth/login';
 
+const ALLOWED_DOMAINS = ['@olivos.cl', '@olivosirrigation.com'];
+
 const formSchema = z.object({
-  email: z.string().email({ message: 'Ingrese una dirección de correo válida' }),
+  email: z.string()
+    .email({ message: 'Ingrese una dirección de correo válida' })
+    .refine(
+      email => ALLOWED_DOMAINS.some(d => email.toLowerCase().endsWith(d)),
+      { message: 'Solo usuarios @olivos.cl o @olivosirrigation.com pueden ingresar' },
+    ),
   password: z.string().min(8, { message: 'La contraseña debe tener al menos 8 caracteres' }),
   rememberMe: z.boolean().optional(),
 });
@@ -46,11 +53,6 @@ export default function LoginForm() {
     startTransition(async () => {
       try {
         toast.info('Iniciando sesión...', { duration: 2000 });
-
-        if (!data.email.includes('@olivos.cl') && !data.email.includes('@olivosirrigation.com')) {
-          toast.error('Solo pueden ingresar usuarios de Olivos');
-          return;
-        }
 
         const result = await loginAction(data.email, data.password, 'es');
 

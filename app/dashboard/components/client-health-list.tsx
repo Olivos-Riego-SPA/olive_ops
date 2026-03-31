@@ -19,14 +19,14 @@ const STATUS_STYLE: Record<HealthStatus, { dot: string; bar: string; text: strin
 
 // ── Category config ────────────────────────────────────────────────────────────
 
-const CATEGORY_CONFIG: Record<string, { label: string; text: string }> = {
-  'Outlier Positivo': { label: 'OP', text: 'text-secondary'          },
-  'Q1'              : { label: 'Q1', text: 'text-primary'            },
-  'Q2'              : { label: 'Q2', text: 'text-primary'            },
-  'Q3'              : { label: 'Q3', text: 'text-tertiary'           },
-  'Q4'              : { label: 'Q4', text: 'text-tertiary'           },
-  'Q5'              : { label: 'Q5', text: 'text-error'              },
-  'Outlier Negativo': { label: 'ON', text: 'text-on-surface-variant' },
+const CATEGORY_CONFIG: Record<string, { label: string; text: string; chip: string; chipActive: string }> = {
+  'Outlier Positivo': { label: 'OP', text: 'text-secondary',          chip: 'text-secondary border-secondary/40',          chipActive: 'bg-secondary text-on-secondary border-secondary'          },
+  'Q1'              : { label: 'Q1', text: 'text-primary',            chip: 'text-primary border-primary/40',              chipActive: 'bg-primary text-on-primary border-primary'              },
+  'Q2'              : { label: 'Q2', text: 'text-primary',            chip: 'text-primary border-primary/40',              chipActive: 'bg-primary text-on-primary border-primary'              },
+  'Q3'              : { label: 'Q3', text: 'text-tertiary',           chip: 'text-tertiary border-tertiary/40',            chipActive: 'bg-tertiary text-on-tertiary border-tertiary'           },
+  'Q4'              : { label: 'Q4', text: 'text-tertiary',           chip: 'text-tertiary border-tertiary/40',            chipActive: 'bg-tertiary text-on-tertiary border-tertiary'           },
+  'Q5'              : { label: 'Q5', text: 'text-error',              chip: 'text-error border-error/40',                  chipActive: 'bg-error text-on-error border-error'                  },
+  'Outlier Negativo': { label: 'ON', text: 'text-on-surface-variant', chip: 'text-on-surface-variant border-outline/40',   chipActive: 'bg-surface-container-highest text-on-surface border-outline' },
 };
 
 const CATEGORY_RANK: Record<string, number> = {
@@ -35,11 +35,14 @@ const CATEGORY_RANK: Record<string, number> = {
   'Outlier Negativo': 6,
 };
 
+const CATEGORY_ORDER = ['Outlier Positivo', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Outlier Negativo'] as const;
+
 // ── ClientHealthList ───────────────────────────────────────────────────────────
 
 export default function ClientHealthList() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'score' | 'category'>('score');
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
 
   const monitor = useMonitorData();
   const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
@@ -81,9 +84,24 @@ export default function ClientHealthList() {
     isLoading,
   ]);
 
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = q ? allClients.filter(c => c.clientName.toLowerCase().includes(q)) : [...allClients];
+    let list = q ? allClients.filter(c => c.clientName.toLowerCase().includes(q)) : [...allClients];
+
+    if (selectedCategories.size > 0) {
+      list = list.filter(c => {
+        const cat = categoryMap.get(c.clientId) ?? '';
+        return selectedCategories.has(cat === '' ? '__none__' : cat);
+      });
+    }
 
     if (sortBy === 'score') {
       list.sort((a, b) => a.globalScore - b.globalScore);
@@ -95,7 +113,7 @@ export default function ClientHealthList() {
       });
     }
     return list;
-  }, [allClients, search, sortBy, categoryMap]);
+  }, [allClients, search, sortBy, categoryMap, selectedCategories]);
 
   const criticalCount = allClients.filter(c => c.globalStatus === 'critical').length;
   const warningCount  = allClients.filter(c => c.globalStatus === 'warning').length;
@@ -123,6 +141,39 @@ export default function ClientHealthList() {
           className="w-full bg-surface-container pl-10 pr-4 py-3 rounded-sm text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-high transition-colors"
         />
       </div>
+
+      {/* Chips de categoría */}
+      {!isLoading && allClients.length > 0 && (
+        <div className="flex gap-1.5">
+          {CATEGORY_ORDER.map(cat => {
+            const cfg = CATEGORY_CONFIG[cat];
+            const active = selectedCategories.has(cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`flex-1 font-display text-label-md py-2.5 rounded-sm border transition-colors ${
+                  active ? cfg.chipActive : cfg.chip + ' bg-transparent'
+                }`}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
+          {allClients.some(c => !categoryMap.get(c.clientId)) && (
+            <button
+              onClick={() => toggleCategory('__none__')}
+              className={`flex-1 font-display text-label-md py-2.5 rounded-sm border transition-colors ${
+                selectedCategories.has('__none__')
+                  ? 'bg-surface-container-highest text-on-surface border-outline'
+                  : 'text-on-surface-variant border-outline/40 bg-transparent'
+              }`}
+            >
+              —
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Resumen de estados */}
       {!isLoading && allClients.length > 0 && (

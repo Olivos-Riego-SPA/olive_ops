@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LuSprout } from 'react-icons/lu';
 import { useMonitorData } from '@/hooks/use-monitor-data';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { useSwipeBack } from '@/hooks/use-swipe-back';
 import { PullIndicator } from '@/components/pull-indicator';
+import { SwipeBackIndicator } from '@/components/swipe-back-indicator';
 import { buildClientSaludList, formatHours, scoreToStatus } from '@/lib/calc-client-salud';
 import type { CampoSalud, HealthStatus } from '@/types/client-salud';
 
@@ -22,9 +24,11 @@ const STATUS_STYLE: Record<HealthStatus, { dot: string; bar: string; text: strin
 
 export default function CampoList({ clientId }: { clientId: string }) {
   const router = useRouter();
+  const [search, setSearch] = useState('');
 
   const monitor = useMonitorData();
   const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
+  const swipeBack = useSwipeBack(() => router.back());
 
   const isLoading =
     monitor.talgilConns.isLoading  ||
@@ -60,11 +64,14 @@ export default function CampoList({ clientId }: { clientId: string }) {
   const campos = useMemo(() => {
     if (!client) return [];
     const STATUS_ORDER: Record<HealthStatus, number> = { critical: 0, warning: 1, ok: 2 };
-    return [...client.campos].sort((a, b) => {
-      const diff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-      return diff !== 0 ? diff : a.score - b.score;
-    });
-  }, [client]);
+    const q = search.trim().toLowerCase();
+    return [...client.campos]
+      .filter(c => !q || c.campoName.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const diff = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+        return diff !== 0 ? diff : a.score - b.score;
+      });
+  }, [client, search]);
 
   const globalSt = client ? STATUS_STYLE[client.globalStatus] : null;
 
@@ -88,6 +95,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
   return (
     <main className="min-h-screen bg-surface">
       <PullIndicator pullY={pullY} refreshing={refreshing || monitor.isRefetching} />
+      <SwipeBackIndicator {...swipeBack} />
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
 
         {/* Botón volver */}
@@ -193,12 +201,46 @@ export default function CampoList({ clientId }: { clientId: string }) {
           </div>
         )}
 
+        {/* Separador campos */}
+        <div className="flex items-center gap-3 pt-1">
+          <span className="font-display text-label-sm uppercase tracking-label text-on-surface-variant">Campos</span>
+          <div className="flex-1 h-px bg-outline-variant" />
+          {!isLoading && client && (
+            <span className="font-display text-label-sm text-on-surface-variant">{campos.length}</span>
+          )}
+        </div>
+
+        {/* Buscador de campos */}
+        <div className="relative flex items-center">
+          <svg
+            className="absolute left-3.5 w-4 h-4 text-on-surface-variant pointer-events-none"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Buscar campo..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-surface-container pl-10 pr-4 py-3 rounded-sm text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-high transition-colors"
+          />
+        </div>
+
         {/* Lista de campos */}
         {!isLoading && client && (
           <div className="space-y-3">
             {campos.map(campo => (
               <CampoCard key={campo.campoId} campo={campo} clientId={clientId} />
             ))}
+            {campos.length === 0 && search && (
+              <div className="py-12 text-center">
+                <p className="text-body-md text-on-surface-variant">
+                  Sin resultados para &ldquo;{search}&rdquo;
+                </p>
+              </div>
+            )}
           </div>
         )}
 

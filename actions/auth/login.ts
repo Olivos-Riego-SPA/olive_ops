@@ -3,7 +3,13 @@
 import { loginService } from '@/services/auth/authService';
 import { getSession } from '@/lib/session';
 
+const ALLOWED_DOMAINS = ['@olivos.cl', '@olivosirrigation.com'];
+
 export async function loginAction(email: string, password: string, locale: string) {
+  if (!ALLOWED_DOMAINS.some(d => email.toLowerCase().endsWith(d))) {
+    throw new Error('Unauthorized domain');
+  }
+
   try {
     const data = await loginService(email, password, locale);
     console.log('🌐 Respuesta de login recibida:', data);
