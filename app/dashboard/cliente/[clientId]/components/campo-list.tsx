@@ -30,7 +30,10 @@ export default function CampoList({ clientId }: { clientId: string }) {
   const { track } = useSessionScan();
 
   const monitor = useMonitorData();
-  const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
+  const { pullY, refreshing } = usePullToRefresh(() => {
+    track(OPS.clientFieldsRefresh());
+    return monitor.refetchAll();
+  });
   const swipeBack = useSwipeBack(() => router.back());
 
   const isLoading =
@@ -70,6 +73,17 @@ export default function CampoList({ clientId }: { clientId: string }) {
     tracked.current = true;
     track(OPS.clientFieldsView({ entityId: clientId, entityName: client.clientName }));
   }, [client, clientId, track]);
+
+  // Track search with debounce
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!search.trim()) return;
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      track(OPS.clientFieldsSearch({ metadata: { query: search.trim() } }));
+    }, 500);
+    return () => clearTimeout(searchTimer.current);
+  }, [search, track]);
 
   // Campos ordenados: críticos → alertas → ok, dentro del grupo por score asc
   const campos = useMemo(() => {
@@ -194,7 +208,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
         {!isLoading && !client && (
           <div className="py-16 text-center space-y-2">
             <p className="text-body-md text-on-surface-variant">Cliente no encontrado</p>
-            <button onClick={() => router.back()} className="text-label-md text-primary underline">
+            <button onClick={() => { track(OPS.clientFieldsBack()); router.back(); }} className="text-label-md text-primary underline">
               Volver al listado
             </button>
           </div>

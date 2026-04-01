@@ -52,12 +52,15 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
     clientId, campoId, isLoading,
   ]);
 
-  // Track page view
+  // Track page view + section views (once)
   const tracked = useRef(false);
   useEffect(() => {
     if (tracked.current || !campo) return;
     tracked.current = true;
     track(OPS.fieldDetailView({ entityId: campoId, entityName: campo.campoName }));
+    if (campo.talgilDevices.length > 0) track(OPS.talgilViewDevices({ entityId: campoId, metadata: { count: campo.talgilDevices.length } }));
+    if (campo.pesslDevices.length > 0) track(OPS.pesslViewDevices({ entityId: campoId, metadata: { count: campo.pesslDevices.length } }));
+    if (campo.pozos.length > 0) track(OPS.pozosViewWells({ entityId: campoId, metadata: { count: campo.pozos.length } }));
   }, [campo, campoId, track]);
 
   const pct    = campo ? Math.round(campo.score * 100) : 0;
@@ -149,7 +152,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
         {!isLoading && !campo && (
           <div className="py-16 text-center space-y-2">
             <p className="text-body-md text-on-surface-variant">Campo no encontrado</p>
-            <button onClick={() => router.back()} className="text-label-md text-primary underline">
+            <button onClick={() => { track(OPS.fieldDetailBack()); router.back(); }} className="text-label-md text-primary underline">
               Volver
             </button>
           </div>
@@ -182,7 +185,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
                 okCount={campo.pesslDevices.filter(p => p.status === 'ok').length}
               >
                 {campo.pesslDevices.map(dev => (
-                  <PesslRow key={dev.serial} dev={dev} />
+                  <PesslRow key={dev.serial} dev={dev} track={track} />
                 ))}
               </Section>
             )}
@@ -197,7 +200,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
                 okCount={campo.pozos.filter(z => !z.hasError).length}
               >
                 {campo.pozos.map(pozo => (
-                  <PozoRow key={pozo.wellId} pozo={pozo} />
+                  <PozoRow key={pozo.wellId} pozo={pozo} track={track} />
                 ))}
               </Section>
             )}
@@ -546,7 +549,7 @@ function RtuHistoryChart({
 
 // ── PesslRow ──────────────────────────────────────────────────────────────────
 
-function PesslRow({ dev }: { dev: PesslSalud }) {
+function PesslRow({ dev, track }: { dev: PesslSalud; track: (e: SessionScanEvent) => void }) {
   const st  = STATUS_STYLE[dev.status];
   const pct = Math.round(dev.score * 100);
 
@@ -606,7 +609,7 @@ function PesslRow({ dev }: { dev: PesslSalud }) {
 
 // ── PozoRow ───────────────────────────────────────────────────────────────────
 
-function PozoRow({ pozo }: { pozo: PozoSalud }) {
+function PozoRow({ pozo, track }: { pozo: PozoSalud; track: (e: SessionScanEvent) => void }) {
   const isInfo = pozo.hasWarning && !pozo.hasError;
   const status: HealthStatus = pozo.hasError ? 'critical' : isInfo ? 'warning' : 'ok';
   const st = STATUS_STYLE[status];

@@ -28,6 +28,8 @@ export const OPS = {
 
   // ── CLIENT FIELDS ──────────────────────────────────────────────────────────
   clientFieldsView: ev(OpsScanModule.OPS_CLIENT_FIELDS, 'ops.client-fields.view', ScanActionType.READ, 'Ver lista de campos del cliente'),
+  clientFieldsSearch: ev(OpsScanModule.OPS_CLIENT_FIELDS, 'ops.client-fields.search', ScanActionType.READ, 'Buscar campo por nombre'),
+  clientFieldsRefresh: ev(OpsScanModule.OPS_CLIENT_FIELDS, 'ops.client-fields.refresh', ScanActionType.READ, 'Pull-to-refresh datos de campos'),
   clientFieldsSelectCampo: ev(OpsScanModule.OPS_CLIENT_FIELDS, 'ops.client-fields.select-campo', ScanActionType.NAVIGATE, 'Seleccionar campo para ver detalle'),
   clientFieldsBack: ev(OpsScanModule.OPS_CLIENT_FIELDS, 'ops.client-fields.back', ScanActionType.NAVIGATE, 'Volver a lista de clientes'),
   clientFieldsPrint: ev(OpsScanModule.OPS_CLIENT_FIELDS, 'ops.client-fields.print', ScanActionType.NAVIGATE, 'Abrir ficha de cliente para imprimir'),
@@ -41,16 +43,15 @@ export const OPS = {
   talgilViewDevices: ev(OpsScanModule.OPS_TALGIL_MONITOR, 'ops.talgil.view-devices', ScanActionType.READ, 'Ver dispositivos Talgil del campo'),
   talgilExpandRtuProblems: ev(OpsScanModule.OPS_TALGIL_MONITOR, 'ops.talgil.expand-rtu-problems', ScanActionType.UI, 'Expandir sección RTU con problemas'),
   talgilViewRtuHistory: ev(OpsScanModule.OPS_TALGIL_MONITOR, 'ops.talgil.view-rtu-history', ScanActionType.READ, 'Ver historial de estado RTU (3 días)'),
-  talgilViewBattery: ev(OpsScanModule.OPS_TALGIL_MONITOR, 'ops.talgil.view-battery', ScanActionType.READ, 'Ver estado de batería del dispositivo'),
-
   // ── PESSL MONITOR ──────────────────────────────────────────────────────────
   pesslViewDevices: ev(OpsScanModule.OPS_PESSL_MONITOR, 'ops.pessl.view-devices', ScanActionType.READ, 'Ver dispositivos Pessl del campo'),
-  pesslViewProblems: ev(OpsScanModule.OPS_PESSL_MONITOR, 'ops.pessl.view-problems', ScanActionType.READ, 'Ver problemas de dispositivo Pessl'),
 
   // ── POZOS MONITOR ──────────────────────────────────────────────────────────
   pozosViewWells: ev(OpsScanModule.OPS_POZOS_MONITOR, 'ops.pozos.view-wells', ScanActionType.READ, 'Ver pozos DGA del campo'),
-  pozosViewDgaStatus: ev(OpsScanModule.OPS_POZOS_MONITOR, 'ops.pozos.view-dga-status', ScanActionType.READ, 'Ver estado de envío DGA del pozo'),
-  pozosViewPendingData: ev(OpsScanModule.OPS_POZOS_MONITOR, 'ops.pozos.view-pending-data', ScanActionType.READ, 'Ver datos pendientes de envío'),
+
+  // ── UI ─────────────────────────────────────────────────────────────────────
+  userMenuOpen: ev(OpsScanModule.OPS_SESSION, 'ops.ui.user-menu-open', ScanActionType.UI, 'Abrir menú de usuario'),
+  monitorRefresh: ev(OpsScanModule.OPS_HEALTH_DASHBOARD, 'ops.monitor.refresh', ScanActionType.READ, 'Refrescar datos del monitor de dispositivos'),
 
   // ── PRINT ──────────────────────────────────────────────────────────────────
   printFichaCliente: ev(OpsScanModule.OPS_PRINT, 'ops.print.ficha-cliente', ScanActionType.EXPORT, 'Generar ficha técnica de cliente'),
