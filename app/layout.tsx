@@ -3,6 +3,7 @@ import { Space_Grotesk, Manrope } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { SessionProvider } from '@/lib/session-provider';
 import { UserProvider } from '@/context/userContext';
+import { SessionScanProvider } from '@/context/sessionScanContext';
 import { getSessionUser } from '@/lib/session';
 import QueryProvider from '@/lib/query-provider';
 import PwaRegister from '@/app/components/pwa-register';
@@ -53,11 +54,13 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <QueryProvider>
           <UserProvider user={clientUser}>
-            <SessionProvider session={sessionData}>
-              {children}
-              <Toaster theme="dark" position="top-right" richColors />
-              <PwaRegister />
-            </SessionProvider>
+            <SessionScanProvider scanSessionId={user?.scanSessionId ?? null}>
+              <SessionProvider session={sessionData}>
+                {children}
+                <Toaster theme="dark" position="top-right" richColors />
+                <PwaRegister />
+              </SessionProvider>
+            </SessionScanProvider>
           </UserProvider>
         </QueryProvider>
       </body>
