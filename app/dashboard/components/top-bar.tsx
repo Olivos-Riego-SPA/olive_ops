@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FiUser, FiLogOut } from 'react-icons/fi';
+import { useSessionScan } from '@/hooks/use-session-scan';
+import { OPS } from '@/lib/scan-events';
 
 interface TopBarProps {
   userName: string | null | undefined;
@@ -12,6 +14,7 @@ interface TopBarProps {
 export default function TopBar({ userName }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { track } = useSessionScan();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -28,6 +31,7 @@ export default function TopBar({ userName }: TopBarProps) {
 
   async function handleLogout() {
     setOpen(false);
+    track(OPS.logout());
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/');
     router.refresh();
@@ -55,7 +59,7 @@ export default function TopBar({ userName }: TopBarProps) {
       {/* ── Derecha: avatar + dropdown ── */}
       <div className="relative" ref={ref}>
         <button
-          onClick={() => setOpen(v => !v)}
+          onClick={() => { const next = !open; setOpen(next); if (next) track(OPS.userMenuOpen()); }}
           className="w-8 h-8 flex items-center justify-center rounded-sm bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors"
           aria-label="Menú de usuario"
         >

@@ -2,6 +2,8 @@
 
 import { getIronSession, IronSession } from 'iron-session';
 import { cookies } from 'next/headers';
+import { logScanService } from '@/services/session-scan/service';
+import { OpsScanModule, ScanActionType } from '@/types/session-scan';
 
 // 🔒 Control de refresh en progreso
 let isRefreshing = false;
@@ -32,6 +34,7 @@ export interface SessionData {
     isAdmin: boolean;
     isReadOnlyAdmin: boolean;
     zenoSamaMode: boolean;
+    scanSessionId?: string;
   };
 }
 
@@ -247,6 +250,22 @@ async function refreshAccessToken(): Promise<void> {
     }
 
     await session.save();
+
+    // Fire-and-forget: log token refresh
+    logScanService({
+      sessionId: session.user!.scanSessionId ?? '',
+      userId: session.user!.id,
+      userEmail: session.user!.email ?? '',
+      userRole: {
+        isAdmin: session.user!.isAdmin,
+        isReadOnlyAdmin: session.user!.isReadOnlyAdmin,
+        zenoSamaMode: session.user!.zenoSamaMode,
+      },
+      scanModule: OpsScanModule.OPS_SESSION,
+      action: 'ops.session.refresh',
+      actionType: ScanActionType.REFRESH,
+      description: 'Renovación de token en Olive Ops',
+    }).catch(() => {});
 
     console.log('✅ Token renovado exitosamente');
     console.log(`   Access Token expira: ${session.user.accessTokenExpiresIn || 'N/A'}`);

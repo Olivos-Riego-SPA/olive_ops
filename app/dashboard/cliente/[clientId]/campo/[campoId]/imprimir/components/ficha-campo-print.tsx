@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSessionScan } from '@/hooks/use-session-scan';
+import { OPS } from '@/lib/scan-events';
 import { buildFichaData } from '@/lib/build-ficha-data';
 import type {
   FichaData,
@@ -38,10 +40,19 @@ function commColor(hours: number | null): string {
 
 export default function FichaCampoPrint({ clientId, campoId }: { clientId: string; campoId: string }) {
   const router = useRouter();
+  const { track } = useSessionScan();
   const [ficha, setFicha]     = useState<FichaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(false);
   const generatedAt = useMemo(() => new Date(), []);
+
+  // Track page view
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    track(OPS.printFichaCampo({ entityId: campoId }));
+  }, [campoId, track]);
 
   useEffect(() => {
     buildFichaData(clientId, campoId)
@@ -76,7 +87,7 @@ export default function FichaCampoPrint({ clientId, campoId }: { clientId: strin
       {/* ── Barra de acción ── */}
       <div className="print:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => { track(OPS.printBack()); router.back(); }}
           className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1.5 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -87,7 +98,7 @@ export default function FichaCampoPrint({ clientId, campoId }: { clientId: strin
         <span className="flex-1" />
         <p className="text-sm text-gray-400">Vista previa de impresión</p>
         <button
-          onClick={() => window.print()}
+          onClick={() => { track(OPS.printSavePdf({ entityId: campoId })); window.print(); }}
           className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

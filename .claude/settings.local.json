@@ -5,7 +5,13 @@
       "Bash(xargs grep:*)",
       "Read(//c/Users/**)",
       "Bash(ls -la \"/c/Users/nel_z/source/plataforma-soporte/src/app/\\(auth\\)/\")",
-      "Bash(ls -la \"/c/Users/nel_z/source/plataforma-soporte/src/app/\\(auth\\)/\\(signin\\)/\")"
+      "Bash(ls -la \"/c/Users/nel_z/source/plataforma-soporte/src/app/\\(auth\\)/\\(signin\\)/\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase:*)"
     ]
   }
 }

@@ -1,11 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMonitorData } from '@/hooks/use-monitor-data';
+import { useSessionScan } from '@/hooks/use-session-scan';
+import { OPS } from '@/lib/scan-events';
 import { buildClientSaludList, formatHoursShort } from '@/lib/calc-client-salud';
 import { getRtuDetailsAction } from '@/actions/dashboard/action';
 import type { TalgilSalud, PesslSalud, PozoSalud, HealthStatus } from '@/types/client-salud';
+import type { SessionScanEvent } from '@/types/session-scan';
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
 
@@ -19,6 +22,7 @@ const STATUS_STYLE: Record<HealthStatus, { dot: string; text: string; label: str
 
 export default function CampoDetalle({ clientId, campoId }: { clientId: string; campoId: string }) {
   const router = useRouter();
+  const { track } = useSessionScan();
   const monitor = useMonitorData();
 
   const isLoading =
@@ -48,6 +52,17 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
     clientId, campoId, isLoading,
   ]);
 
+  // Track page view + section views (once)
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (tracked.current || !campo) return;
+    tracked.current = true;
+    track(OPS.fieldDetailView({ entityId: campoId, entityName: campo.campoName }));
+    if (campo.talgilDevices.length > 0) track(OPS.talgilViewDevices({ entityId: campoId, metadata: { count: campo.talgilDevices.length } }));
+    if (campo.pesslDevices.length > 0) track(OPS.pesslViewDevices({ entityId: campoId, metadata: { count: campo.pesslDevices.length } }));
+    if (campo.pozos.length > 0) track(OPS.pozosViewWells({ entityId: campoId, metadata: { count: campo.pozos.length } }));
+  }, [campo, campoId, track]);
+
   const pct    = campo ? Math.round(campo.score * 100) : 0;
   const st     = campo ? STATUS_STYLE[campo.status] : null;
 
@@ -57,7 +72,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
 
         {/* Botón volver */}
         <button
-          onClick={() => router.back()}
+          onClick={() => { track(OPS.fieldDetailBack()); router.back(); }}
           className="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,7 +118,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
                   {pct}%
                 </span>
                 <button
-                  onClick={() => router.push(`/dashboard/cliente/${clientId}/campo/${campoId}/imprimir`)}
+                  onClick={() => { track(OPS.fieldDetailPrint({ entityId: campoId })); router.push(`/dashboard/cliente/${clientId}/campo/${campoId}/imprimir`); }}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-on-secondary font-display text-label-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,7 +152,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
         {!isLoading && !campo && (
           <div className="py-16 text-center space-y-2">
             <p className="text-body-md text-on-surface-variant">Campo no encontrado</p>
-            <button onClick={() => router.back()} className="text-label-md text-primary underline">
+            <button onClick={() => { track(OPS.fieldDetailBack()); router.back(); }} className="text-label-md text-primary underline">
               Volver
             </button>
           </div>
@@ -155,7 +170,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
                 okCount={campo.talgilDevices.filter(t => t.status === 'ok').length}
               >
                 {campo.talgilDevices.map(dev => (
-                  <TalgilRow key={dev.serial} dev={dev} />
+                  <TalgilRow key={dev.serial} dev={dev} track={track} />
                 ))}
               </Section>
             )}
@@ -170,7 +185,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
                 okCount={campo.pesslDevices.filter(p => p.status === 'ok').length}
               >
                 {campo.pesslDevices.map(dev => (
-                  <PesslRow key={dev.serial} dev={dev} />
+                  <PesslRow key={dev.serial} dev={dev} track={track} />
                 ))}
               </Section>
             )}
@@ -185,7 +200,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
                 okCount={campo.pozos.filter(z => !z.hasError).length}
               >
                 {campo.pozos.map(pozo => (
-                  <PozoRow key={pozo.wellId} pozo={pozo} />
+                  <PozoRow key={pozo.wellId} pozo={pozo} track={track} />
                 ))}
               </Section>
             )}
@@ -236,7 +251,7 @@ function Section({
 
 // ── TalgilRow ─────────────────────────────────────────────────────────────────
 
-function TalgilRow({ dev }: { dev: TalgilSalud }) {
+function TalgilRow({ dev, track }: { dev: TalgilSalud; track: (e: SessionScanEvent) => void }) {
   const st  = STATUS_STYLE[dev.status];
   const pct = Math.round(dev.score * 100);
   const [rtuOpen, setRtuOpen] = useState(false);
@@ -295,7 +310,12 @@ function TalgilRow({ dev }: { dev: TalgilSalud }) {
       {dev.rtus && (dev.rtus.errors > 0 || dev.rtus.alerts > 0) && (
         <div className="space-y-1.5">
           <button
-            onClick={() => hasRtuDetail && setRtuOpen((o: boolean) => !o)}
+            onClick={() => {
+              if (!hasRtuDetail) return;
+              const willOpen = !rtuOpen;
+              setRtuOpen(willOpen);
+              if (willOpen) track(OPS.talgilExpandRtuProblems({ entityId: dev.serial, entityName: dev.name }));
+            }}
             className={`flex items-center gap-2 w-full text-left px-3 py-2.5 rounded-sm bg-surface-container transition-colors ${
               hasRtuDetail ? 'cursor-pointer active:bg-surface-container-high' : 'cursor-default'
             }`}
@@ -329,7 +349,7 @@ function TalgilRow({ dev }: { dev: TalgilSalud }) {
           {rtuOpen && hasRtuDetail && (
             <div className="bg-surface-container rounded-sm overflow-hidden divide-y divide-outline-variant/10">
               {dev.rtus.problemRtus.map((r, i) => (
-                <RtuDetailRow key={i} rtu={r} />
+                <RtuDetailRow key={i} rtu={r} track={track} />
               ))}
             </div>
           )}
@@ -344,7 +364,7 @@ function TalgilRow({ dev }: { dev: TalgilSalud }) {
 
 type ProblemRtu = { name: string; uid: string; stateLabel: string; state: number; _id: string };
 
-function RtuDetailRow({ rtu }: { rtu: ProblemRtu }) {
+function RtuDetailRow({ rtu, track }: { rtu: ProblemRtu; track: (e: SessionScanEvent) => void }) {
   const [open, setOpen]         = useState(false);
   const [loading, setLoading]   = useState(false);
   const [chartData, setChartData] = useState<{ date: string; state: number }[] | null>(null);
@@ -358,6 +378,7 @@ function RtuDetailRow({ rtu }: { rtu: ProblemRtu }) {
     if (!hasChart) return;
     if (open) { setOpen(false); return; }
     setOpen(true);
+    track(OPS.talgilViewRtuHistory({ entityId: rtu._id, entityName: rtu.name }));
     if (chartData !== null) return; // already fetched
     setLoading(true);
     const data = await getRtuDetailsAction(rtu._id);
@@ -528,7 +549,7 @@ function RtuHistoryChart({
 
 // ── PesslRow ──────────────────────────────────────────────────────────────────
 
-function PesslRow({ dev }: { dev: PesslSalud }) {
+function PesslRow({ dev, track }: { dev: PesslSalud; track: (e: SessionScanEvent) => void }) {
   const st  = STATUS_STYLE[dev.status];
   const pct = Math.round(dev.score * 100);
 
@@ -588,7 +609,7 @@ function PesslRow({ dev }: { dev: PesslSalud }) {
 
 // ── PozoRow ───────────────────────────────────────────────────────────────────
 
-function PozoRow({ pozo }: { pozo: PozoSalud }) {
+function PozoRow({ pozo, track }: { pozo: PozoSalud; track: (e: SessionScanEvent) => void }) {
   const isInfo = pozo.hasWarning && !pozo.hasError;
   const status: HealthStatus = pozo.hasError ? 'critical' : isInfo ? 'warning' : 'ok';
   const st = STATUS_STYLE[status];

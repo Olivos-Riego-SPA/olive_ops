@@ -1,8 +1,11 @@
 'use client';
 
 import { useMonitorData } from '@/hooks/use-monitor-data';
+import { useSessionScan } from '@/hooks/use-session-scan';
+import { OPS } from '@/lib/scan-events';
 
 export default function MonitorStatus() {
+  const { track } = useSessionScan();
   const {
     talgilConns,
     pesslConns,
@@ -36,7 +39,7 @@ export default function MonitorStatus() {
           )}
         </div>
         <button
-          onClick={refetchAll}
+          onClick={() => { track(OPS.monitorRefresh()); refetchAll(); }}
           disabled={isLoading || isRefetching}
           className="px-4 py-1.5 rounded-sm border border-outline-variant text-label-md font-display uppercase tracking-label text-on-surface-variant hover:border-primary hover:text-primary transition-colors duration-(--duration-fast) disabled:opacity-40"
         >

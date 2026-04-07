@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LuSprout } from 'react-icons/lu';
 import { useMonitorData } from '@/hooks/use-monitor-data';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useSwipeBack } from '@/hooks/use-swipe-back';
+import { useSessionScan } from '@/hooks/use-session-scan';
+import { OPS } from '@/lib/scan-events';
 import { PullIndicator } from '@/components/pull-indicator';
 import { SwipeBackIndicator } from '@/components/swipe-back-indicator';
 import { buildClientSaludList, formatHours, scoreToStatus } from '@/lib/calc-client-salud';
@@ -25,9 +27,13 @@ const STATUS_STYLE: Record<HealthStatus, { dot: string; bar: string; text: strin
 export default function CampoList({ clientId }: { clientId: string }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const { track } = useSessionScan();
 
   const monitor = useMonitorData();
-  const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
+  const { pullY, refreshing } = usePullToRefresh(() => {
+    track(OPS.clientFieldsRefresh());
+    return monitor.refetchAll();
+  });
   const swipeBack = useSwipeBack(() => router.back());
 
   const isLoading =
@@ -59,6 +65,25 @@ export default function CampoList({ clientId }: { clientId: string }) {
     clientId,
     isLoading,
   ]);
+
+  // Track page view
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (tracked.current || !client) return;
+    tracked.current = true;
+    track(OPS.clientFieldsView({ entityId: clientId, entityName: client.clientName }));
+  }, [client, clientId, track]);
+
+  // Track search with debounce
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!search.trim()) return;
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      track(OPS.clientFieldsSearch({ metadata: { query: search.trim() } }));
+    }, 500);
+    return () => clearTimeout(searchTimer.current);
+  }, [search, track]);
 
   // Campos ordenados: críticos → alertas → ok, dentro del grupo por score asc
   const campos = useMemo(() => {
@@ -100,7 +125,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
 
         {/* Botón volver */}
         <button
-          onClick={() => router.back()}
+          onClick={() => { track(OPS.clientFieldsBack()); router.back(); }}
           className="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
           aria-label="Volver"
         >
@@ -166,6 +191,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
                 </span>
                 <Link
                   href={`/dashboard/cliente/${clientId}/imprimir`}
+                  onClick={() => track(OPS.clientFieldsPrint({ entityId: clientId }))}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-on-secondary font-display text-label-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -182,7 +208,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
         {!isLoading && !client && (
           <div className="py-16 text-center space-y-2">
             <p className="text-body-md text-on-surface-variant">Cliente no encontrado</p>
-            <button onClick={() => router.back()} className="text-label-md text-primary underline">
+            <button onClick={() => { track(OPS.clientFieldsBack()); router.back(); }} className="text-label-md text-primary underline">
               Volver al listado
             </button>
           </div>
@@ -232,7 +258,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
         {!isLoading && client && (
           <div className="space-y-3">
             {campos.map(campo => (
-              <CampoCard key={campo.campoId} campo={campo} clientId={clientId} />
+              <CampoCard key={campo.campoId} campo={campo} clientId={clientId} onSelect={track} />
             ))}
             {campos.length === 0 && search && (
               <div className="py-12 text-center">
@@ -277,7 +303,7 @@ function TechSummaryChip({ label, count, score }: { label: string; count: number
 
 // ── CampoCard ─────────────────────────────────────────────────────────────────
 
-function CampoCard({ campo, clientId }: { campo: CampoSalud; clientId: string }) {
+function CampoCard({ campo, clientId, onSelect }: { campo: CampoSalud; clientId: string; onSelect: (event: import('@/types/session-scan').SessionScanEvent) => void }) {
   const st  = STATUS_STYLE[campo.status];
   const pct = Math.round(campo.score * 100);
 
@@ -288,6 +314,7 @@ function CampoCard({ campo, clientId }: { campo: CampoSalud; clientId: string })
   return (
     <Link
       href={`/dashboard/cliente/${clientId}/campo/${campo.campoId}`}
+      onClick={() => onSelect(OPS.clientFieldsSelectCampo({ entityId: campo.campoId, entityName: campo.campoName }))}
       className="block bg-surface-container-low rounded-sm p-4 active:bg-surface-container transition-colors"
     >
       {/* Fila superior: icono + nombre + chevron */}

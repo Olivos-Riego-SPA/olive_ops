@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LuBuilding2 } from 'react-icons/lu';
 import { useMonitorData } from '@/hooks/use-monitor-data';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { useSessionScan } from '@/hooks/use-session-scan';
+import { OPS } from '@/lib/scan-events';
 import { PullIndicator } from '@/components/pull-indicator';
 import { buildClientSaludList } from '@/lib/calc-client-salud';
 import type { ClientSalud, HealthStatus } from '@/types/client-salud';
@@ -43,9 +45,32 @@ export default function ClientHealthList() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'score' | 'category'>('score');
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const { track } = useSessionScan();
 
   const monitor = useMonitorData();
-  const { pullY, refreshing } = usePullToRefresh(monitor.refetchAll);
+  const { pullY, refreshing } = usePullToRefresh(() => {
+    track(OPS.healthRefresh());
+    return monitor.refetchAll();
+  });
+
+  // Track page view
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    track(OPS.healthView());
+  }, [track]);
+
+  // Track search with debounce
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!search.trim()) return;
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      track(OPS.healthSearch({ metadata: { query: search.trim() } }));
+    }, 500);
+    return () => clearTimeout(searchTimer.current);
+  }, [search, track]);
 
   const isLoading =
     monitor.talgilConns.isLoading ||
@@ -220,7 +245,7 @@ export default function ClientHealthList() {
         <div className="flex items-center gap-2">
           <span className="font-display text-label-sm text-on-surface-variant uppercase tracking-label mr-1">Ordenar</span>
           <button
-            onClick={() => setSortBy('score')}
+            onClick={() => { setSortBy('score'); track(OPS.healthSort({ metadata: { sortBy: 'score' } })); }}
             className={`font-display text-label-sm px-3 py-1 rounded-sm transition-colors ${
               sortBy === 'score'
                 ? 'bg-surface-container-highest text-on-surface'
@@ -230,7 +255,7 @@ export default function ClientHealthList() {
             % Salud
           </button>
           <button
-            onClick={() => setSortBy('category')}
+            onClick={() => { setSortBy('category'); track(OPS.healthSort({ metadata: { sortBy: 'category' } })); }}
             className={`font-display text-label-sm px-3 py-1 rounded-sm transition-colors ${
               sortBy === 'category'
                 ? 'bg-surface-container-highest text-on-surface'
@@ -246,7 +271,7 @@ export default function ClientHealthList() {
       {!isLoading && (
         <div className="space-y-2.5">
           {filtered.map(client => (
-            <ClientCard key={client.clientId} client={client} category={categoryMap.get(client.clientId)} />
+            <ClientCard key={client.clientId} client={client} category={categoryMap.get(client.clientId)} onSelect={track} />
           ))}
 
           {filtered.length === 0 && (
@@ -264,12 +289,13 @@ export default function ClientHealthList() {
 
 // ── ClientCard ────────────────────────────────────────────────────────────────
 
-function ClientCard({ client, category }: { client: ClientSalud; category?: string }) {
+function ClientCard({ client, category, onSelect }: { client: ClientSalud; category?: string; onSelect: (event: import('@/types/session-scan').SessionScanEvent) => void }) {
   const st = STATUS_STYLE[client.globalStatus];
 
   return (
     <Link
       href={`/dashboard/cliente/${client.clientId}`}
+      onClick={() => onSelect(OPS.healthSelectClient({ entityId: client.clientId, entityName: client.clientName }))}
       className="block bg-surface-container-low rounded-sm p-4 active:bg-surface-container transition-colors"
     >
       {/* Fila superior: icono + nombre */}
