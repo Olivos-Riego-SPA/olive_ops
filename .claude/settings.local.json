@@ -11,7 +11,8 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(git rebase:*)",
-      "Bash(GIT_EDITOR=true git rebase:*)"
+      "Bash(GIT_EDITOR=true git rebase:*)",
+      "Bash(grep -n \"API_URL\\\\|NEXT_PUBLIC\" /Users/maczuniga/olive_ops/.env*)"
     ]
   }
 }

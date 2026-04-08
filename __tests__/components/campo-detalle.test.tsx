@@ -48,6 +48,7 @@ const mockClientList: ClientSalud[] = [
                 { name: 'RTU-1', uid: 'uid-1', stateLabel: 'Error com.', state: 2, _id: 'rtu-id-1' },
               ],
             },
+            problems: [],
           },
         ],
         pesslDevices: [
