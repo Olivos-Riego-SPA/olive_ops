@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { LuSprout } from 'react-icons/lu';
 import { useMonitorData } from '@/hooks/use-monitor-data';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useSwipeBack } from '@/hooks/use-swipe-back';
+import { useSmartBack } from '@/hooks/use-smart-back';
 import { useSessionScan } from '@/hooks/use-session-scan';
 import { OPS } from '@/lib/scan-events';
 import { PullIndicator } from '@/components/pull-indicator';
@@ -25,7 +25,6 @@ const STATUS_STYLE: Record<HealthStatus, { dot: string; bar: string; text: strin
 // ── CampoList ─────────────────────────────────────────────────────────────────
 
 export default function CampoList({ clientId }: { clientId: string }) {
-  const router = useRouter();
   const [search, setSearch] = useState('');
   const { track } = useSessionScan();
 
@@ -34,7 +33,8 @@ export default function CampoList({ clientId }: { clientId: string }) {
     track(OPS.clientFieldsRefresh());
     return monitor.refetchAll();
   });
-  const swipeBack = useSwipeBack(() => router.back());
+  const goBack = useSmartBack('/dashboard');
+  const swipeBack = useSwipeBack(goBack);
 
   const isLoading =
     monitor.talgilConns.isLoading  ||
@@ -125,7 +125,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
 
         {/* Botón volver */}
         <button
-          onClick={() => { track(OPS.clientFieldsBack()); router.back(); }}
+          onClick={() => { track(OPS.clientFieldsBack()); goBack(); }}
           className="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
           aria-label="Volver"
         >
@@ -208,7 +208,7 @@ export default function CampoList({ clientId }: { clientId: string }) {
         {!isLoading && !client && (
           <div className="py-16 text-center space-y-2">
             <p className="text-body-md text-on-surface-variant">Cliente no encontrado</p>
-            <button onClick={() => { track(OPS.clientFieldsBack()); router.back(); }} className="text-label-md text-primary underline">
+            <button onClick={() => { track(OPS.clientFieldsBack()); goBack(); }} className="text-label-md text-primary underline">
               Volver al listado
             </button>
           </div>

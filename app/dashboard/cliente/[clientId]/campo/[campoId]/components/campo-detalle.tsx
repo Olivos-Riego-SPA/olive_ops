@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSmartBack } from '@/hooks/use-smart-back';
 import { useMonitorData } from '@/hooks/use-monitor-data';
 import { useSessionScan } from '@/hooks/use-session-scan';
 import { OPS } from '@/lib/scan-events';
@@ -22,6 +23,7 @@ const STATUS_STYLE: Record<HealthStatus, { dot: string; text: string; label: str
 
 export default function CampoDetalle({ clientId, campoId }: { clientId: string; campoId: string }) {
   const router = useRouter();
+  const goBack = useSmartBack(`/dashboard/cliente/${clientId}`);
   const { track } = useSessionScan();
   const monitor = useMonitorData();
 
@@ -72,7 +74,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
 
         {/* Botón volver */}
         <button
-          onClick={() => { track(OPS.fieldDetailBack()); router.back(); }}
+          onClick={() => { track(OPS.fieldDetailBack()); goBack(); }}
           className="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -152,7 +154,7 @@ export default function CampoDetalle({ clientId, campoId }: { clientId: string; 
         {!isLoading && !campo && (
           <div className="py-16 text-center space-y-2">
             <p className="text-body-md text-on-surface-variant">Campo no encontrado</p>
-            <button onClick={() => { track(OPS.fieldDetailBack()); router.back(); }} className="text-label-md text-primary underline">
+            <button onClick={() => { track(OPS.fieldDetailBack()); goBack(); }} className="text-label-md text-primary underline">
               Volver
             </button>
           </div>

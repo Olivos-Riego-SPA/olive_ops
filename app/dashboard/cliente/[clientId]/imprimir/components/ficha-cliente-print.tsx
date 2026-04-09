@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSmartBack } from '@/hooks/use-smart-back';
 import { useSessionScan } from '@/hooks/use-session-scan';
 import { OPS } from '@/lib/scan-events';
 import { buildFichaData } from '@/lib/build-ficha-data';
@@ -39,7 +39,7 @@ function commColor(hours: number | null): string {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function FichaClientePrint({ clientId }: { clientId: string }) {
-  const router = useRouter();
+  const goBack = useSmartBack(`/dashboard/cliente/${clientId}`);
   const { track } = useSessionScan();
   const [ficha, setFicha]       = useState<FichaData | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -85,7 +85,7 @@ export default function FichaClientePrint({ clientId }: { clientId: string }) {
       {/* ── Barra de acción ── */}
       <div className="print:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3">
         <button
-          onClick={() => { track(OPS.printBack()); router.back(); }}
+          onClick={() => { track(OPS.printBack()); goBack(); }}
           className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1.5 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
